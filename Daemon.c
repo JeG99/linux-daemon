@@ -1,3 +1,7 @@
+// Andrés Alam Sánchez Torres A00824854 
+// José Elías Garza Vázquez - A00824494
+// Rodrigo de Jesús Ruiz Kwok A00824488
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -6,6 +10,13 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <string.h>
+#include <sys/file.h>
+
+int EXIT_CODE = 0;
+
+void signalHandler(int SIGNAL){
+    EXIT_CODE = 1; 
+}
 
 static void daemonize()
 {
@@ -43,11 +54,11 @@ static void daemonize()
         exit(EXIT_SUCCESS);
     
     /* Set new file permissions */
-    umask(027);
+    umask(771);
     
     /* Change the working directory to the root directory */
     /* or another appropriated directory */
-    chdir("/Users/Hector/progrAva");
+    chdir("/home/jeg99/daemon");
     
     /* Close all open file descriptors */
     int x;
@@ -58,25 +69,34 @@ static void daemonize()
     
     /* Open the log file */
     openlog ("firstdaemon", LOG_PID, LOG_DAEMON);
-}
+} 
 
 int main()
 {
     printf("Starting daemonize\n");
     daemonize();
+    signal(SIGTERM, signalHandler);
     FILE *fp= NULL;
-    fp = fopen ("Log.txt", "w+");
+
+    fp = fopen("Log.txt", "w+");
+int x = flock(fileno(fp), LOCK_EX);
     if (fp != NULL){
-        while (1)
+        while (!EXIT_CODE)
         {
             //TODO: Insert daemon code here.
             syslog (LOG_NOTICE, "First daemon running.");
             fprintf(fp, "Logging to file\n");
             fflush(fp);
-            sleep (20);
-        }
+            sleep (2);
+             
+	}
+	fclose(fp);
+	remove("Log.txt");
     }
-    fclose(fp);
+    else {
+	printf("The file is already being used");
+	exit(0);
+    }
     syslog (LOG_NOTICE, "First daemon terminated.");
     closelog();
     
